@@ -1,0 +1,319 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vanilla JS Excel Clone</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f3f2f1;
+        }
+        .header {
+            background-color: #217346;
+            color: white;
+            padding: 10px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .toolbar {
+            margin-bottom: 10px;
+        }
+        .toolbar button {
+            background-color: #f3f2f1;
+            border: 1px solid #ccc;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 2px;
+        }
+        .toolbar button:hover {
+            background-color: #e1dfdd;
+        }
+
+        .formula-bar {
+            display: flex;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            background: white;
+            padding: 2px;
+        }
+        .formula-label {
+            padding: 5px 10px;
+            background: #e1dfdd;
+            color: #333;
+            font-style: italic;
+            font-family: serif;
+            border-right: 1px solid #ccc;
+        }
+        .formula-input {
+            flex-grow: 1;
+            border: none;
+            padding: 5px 10px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .spreadsheet {
+            overflow: auto;
+            max-height: 600px;
+            background: white;
+            border: 1px solid #ccc;
+        }
+
+        table {
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            min-width: 100px;
+            height: 25px;
+            padding: 0;
+            margin: 0;
+            position: relative;
+        }
+
+        th {
+            background-color: #f3f2f1;
+            color: #333;
+            font-weight: normal;
+            text-align: center;
+            user-select: none;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th.row-header {
+            width: 40px;
+            min-width: 40px;
+            left: 0;
+            z-index: 20;
+        }
+
+        th.corner {
+            z-index: 30;
+            left: 0;
+            top: 0;
+        }
+
+        td input {
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            border: none;
+            outline: none;
+            padding: 2px 5px;
+            font-family: inherit;
+            background: transparent;
+        }
+
+        td.selected {
+            border: 2px solid #217346;
+        }
+        td.selected input {
+            background: #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Vanilla JS Excel</h1>
+    </div>
+
+    <div class="toolbar">
+        <button onclick="clearSheet()">クリア</button>
+        <button onclick="calculate()">計算 (SUM関数など)</button>
+    </div>
+
+    <div class="formula-bar">
+        <div class="formula-label">fx</div>
+        <input type="text" id="formulaInput" class="formula-input" onkeyup="updateCellFromFormula(event)" readonly>
+    </div>
+
+    <div class="spreadsheet">
+        <table id="sheet">
+            <!-- JavaScriptで生成 -->
+        </table>
+    </div>
+
+    <script>
+        const COLS = 26; // A-Z
+        const ROWS = 50;
+        const state = {}; // セルのデータ状態保存
+
+        let selectedCellId = null;
+
+        // 列番号をアルファベットに変換 (0 -> A, 25 -> Z)
+        function getColName(index) {
+            return String.fromCharCode(65 + index);
+        }
+
+        // スプレッドシートの初期化
+        function initSheet() {
+            const table = document.getElementById('sheet');
+
+            // ヘッダー行生成
+            let headerRow = '<tr><th class="corner"></th>';
+            for (let c = 0; c < COLS; c++) {
+                headerRow += `<th>${getColName(c)}</th>`;
+            }
+            headerRow += '</tr>';
+            table.innerHTML += headerRow;
+
+            // データ行生成
+            for (let r = 1; r <= ROWS; r++) {
+                let rowHtml = `<tr><th class="row-header">${r}</th>`;
+                for (let c = 0; c < COLS; c++) {
+                    const cellId = `${getColName(c)}${r}`;
+                    rowHtml += `<td id="td-${cellId}"><input type="text" id="${cellId}" 
+                                onfocus="handleFocus('${cellId}')" 
+                                onblur="handleBlur('${cellId}')"
+                                onkeyup="handleKeyup(event, '${cellId}')"></td>`;
+                }
+                rowHtml += '</tr>';
+                table.innerHTML += rowHtml;
+            }
+        }
+
+        function handleFocus(id) {
+            // 以前の選択を解除
+            if (selectedCellId) {
+                document.getElementById(`td-${selectedCellId}`).classList.remove('selected');
+            }
+
+            selectedCellId = id;
+            document.getElementById(`td-${id}`).classList.add('selected');
+
+            // 数式バーの更新
+            const formulaBar = document.getElementById('formulaInput');
+            formulaBar.removeAttribute('readonly');
+            // 生の数式（または値）を表示
+            formulaBar.value = state[id]?.formula || document.getElementById(id).value;
+        }
+
+        function handleBlur(id) {
+            const input = document.getElementById(id);
+            const val = input.value;
+
+            if (val.startsWith('=')) {
+                // 数式として保存
+                state[id] = { formula: val, value: '' };
+                evaluateFormula(id);
+            } else {
+                // 普通の値として保存
+                state[id] = { formula: val, value: val };
+            }
+        }
+
+        function handleKeyup(e, id) {
+            // 数式バーに同期
+            document.getElementById('formulaInput').value = document.getElementById(id).value;
+
+            if (e.key === 'Enter') {
+                document.getElementById(id).blur();
+                // 下のセルに移動するなどのロジックも追加可能
+            }
+        }
+
+        function updateCellFromFormula(e) {
+            if (!selectedCellId) return;
+            const input = document.getElementById(selectedCellId);
+            input.value = e.target.value;
+
+            if (e.key === 'Enter') {
+                input.blur();
+            }
+        }
+
+        // 簡易的な数式計算（=SUM(A1:A5) などに対応）
+        function evaluateFormula(id) {
+            const cellState = state[id];
+            if (!cellState || !cellState.formula.startsWith('=')) return;
+
+            let formula = cellState.formula.substring(1).toUpperCase(); // =を削除
+            let result = '';
+
+            try {
+                // 簡易SUM関数
+                if (formula.startsWith('SUM(') && formula.endsWith(')')) {
+                    const range = formula.substring(4, formula.length - 1).split(':');
+                    if (range.length === 2) {
+                        result = sumRange(range[0], range[1]);
+                    }
+                } 
+                // 簡単な四則演算 (eval使用。実際の業務アプリではパーサーを推奨)
+                else {
+                    // セル参照(A1等)を値に置換
+                    const parsedFormula = formula.replace(/[A-Z][0-9]+/g, match => {
+                        const val = state[match]?.value || document.getElementById(match)?.value || 0;
+                        return isNaN(val) ? 0 : val;
+                    });
+                    result = eval(parsedFormula);
+                }
+
+                cellState.value = result;
+                document.getElementById(id).value = result;
+
+            } catch (err) {
+                document.getElementById(id).value = '#ERROR!';
+            }
+        }
+
+        // 範囲の合計を計算
+        function sumRange(start, end) {
+            const startCol = start.charCodeAt(0) - 65;
+            const startRow = parseInt(start.substring(1));
+            const endCol = end.charCodeAt(0) - 65;
+            const endRow = parseInt(end.substring(1));
+
+            let sum = 0;
+
+            for (let r = startRow; r <= endRow; r++) {
+                for (let c = startCol; c <= endCol; c++) {
+                    const cellId = `${getColName(c)}${r}`;
+                    const val = parseFloat(state[cellId]?.value || document.getElementById(cellId)?.value || 0);
+                    if (!isNaN(val)) sum += val;
+                }
+            }
+            return sum;
+        }
+
+        function calculate() {
+            // 全ての数式を再計算
+            for (const id in state) {
+                if (state[id].formula.startsWith('=')) {
+                    evaluateFormula(id);
+                }
+            }
+        }
+
+        function clearSheet() {
+            for (let r = 1; r <= ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const id = `${getColName(c)}${r}`;
+                    document.getElementById(id).value = '';
+                    delete state[id];
+                }
+            }
+            document.getElementById('formulaInput').value = '';
+        }
+
+        // 初期化実行
+        window.onload = initSheet;
+
+    </script>
+</body>
+</html>
