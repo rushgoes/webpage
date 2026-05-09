@@ -1,0 +1,126 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Clone in HTML/JS</title>
+    <!-- Jspreadsheet (formerly jexcel) CSS & JS via CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspreadsheet-ce/dist/jspreadsheet.min.css" type="text/css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsuites/dist/jsuites.min.css" type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/jspreadsheet-ce/dist/jspreadsheet.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsuites/dist/jsuites.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f3f2f1;
+        }
+        .header {
+            background-color: #217346; /* Excel Green */
+            color: white;
+            padding: 10px 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 500;
+        }
+        .spreadsheet-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+        .controls {
+            margin-bottom: 15px;
+        }
+        button {
+            background-color: #217346;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #1a5c38;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Web Excel Clone</h1>
+    </div>
+
+    <div class="spreadsheet-container">
+        <div class="controls">
+            <button onclick="downloadCSV()">CSVとしてダウンロード</button>
+            <button onclick="addRow()">行を追加</button>
+            <button onclick="addColumn()">列を追加</button>
+        </div>
+
+        <!-- ここにスプレッドシートが生成されます -->
+        <div id="spreadsheet"></div>
+    </div>
+
+    <script>
+        // サンプルデータ
+        var data = [
+            ['山田 太郎', '営業部', '東京', 150000, '2026-04-01', true],
+            ['佐藤 花子', '人事部', '大阪', 120000, '2026-04-15', false],
+            ['鈴木 一郎', '開発部', '名古屋', 200000, '2026-05-01', true],
+            ['', '', '', '', '', ''],
+            ['', '', '', '', '', '']
+        ];
+
+        // スプレッドシートの初期化
+        var sheet = jspreadsheet(document.getElementById('spreadsheet'), {
+            data: data,
+            columns: [
+                { type: 'text', title: '氏名', width: 120 },
+                { type: 'dropdown', title: '部署', width: 120, source: ['営業部', '人事部', '開発部', '総務部'] },
+                { type: 'text', title: '勤務地', width: 100 },
+                { type: 'numeric', title: '売上/予算', width: 100, mask: '¥ #,##0' },
+                { type: 'calendar', title: '日付', width: 120 },
+                { type: 'checkbox', title: '承認済', width: 80 }
+            ],
+            minDimensions: [10, 15], // 最小で10列×15行を表示
+            defaultColWidth: 100,
+            tableOverflow: true,
+            tableHeight: '500px',
+            tableWidth: '100%',
+            search: true, // 検索機能
+            pagination: 20, // ページネーション
+            contextMenu: function(obj, x, y, e) {
+                var items = [];
+                // デフォルトのコンテキストメニュー（行/列の追加・削除など）を引き継ぐ場合は設定
+                return items; // 今回は標準メニューを使用
+            }
+        });
+
+        // カスタム機能の追加
+        function downloadCSV() {
+            sheet.download();
+        }
+
+        function addRow() {
+            sheet.insertRow();
+        }
+
+        function addColumn() {
+            sheet.insertColumn();
+        }
+    </script>
+
+</body>
+</html>
