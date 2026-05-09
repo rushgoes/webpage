@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>カナヘイのうさぎが動くページ</title>
+    <title>うさぎが動くページ</title>
     <style>
         /* 全体のゆるっとしたスタイリング */
         body {
             margin: 0;
             padding: 0;
             overflow: hidden;
-            background-color: #ffe6eb; /* カナヘイ風のパステルピンク */
+            background-color: #ffe6eb; /* パステルピンク */
             font-family: 'Hiragino Rounded W8 Pro', 'Hiragino Kaku Gothic ProN', sans-serif;
         }
         
@@ -109,8 +109,8 @@
             usagi.style.top = `${randomY}px`;
         }
 
-        // 1.5秒ごとにうさぎを動かす
-        setInterval(moveUsagi, 1500);
+        // 1秒ごとにうさぎを動かす
+        setInterval(moveUsagi, 1000);
 
         // うさぎをクリックしたときのイベント
         usagi.addEventListener('click', (e) => {
